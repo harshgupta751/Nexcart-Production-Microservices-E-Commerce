@@ -1,0 +1,85 @@
+version: '3.9'
+
+services:
+  gateway:
+    image: ${ECR_REGISTRY}/nexcart-gateway:${IMAGE_TAG}
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+
+  auth-service:
+    image: ${ECR_REGISTRY}/nexcart-auth:${IMAGE_TAG}
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+    deploy:
+      replicas: 2
+
+  user-service:
+    image: ${ECR_REGISTRY}/nexcart-user:${IMAGE_TAG}
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+
+  product-service:
+    image: ${ECR_REGISTRY}/nexcart-product:${IMAGE_TAG}
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+    deploy:
+      replicas: 2
+
+  cart-service:
+    image: ${ECR_REGISTRY}/nexcart-cart:${IMAGE_TAG}
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+
+  order-service:
+    image: ${ECR_REGISTRY}/nexcart-order:${IMAGE_TAG}
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+    deploy:
+      replicas: 2
+
+  payment-service:
+    image: ${ECR_REGISTRY}/nexcart-payment:${IMAGE_TAG}
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+
+  notification-service:
+    image: ${ECR_REGISTRY}/nexcart-notification:${IMAGE_TAG}
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+
+  postgres:
+    deploy:
+      replicas: 0
+
+  mongo:
+    deploy:
+      replicas: 0
+
+  redis:
+    deploy:
+      replicas: 0
+
+  rabbitmq:
+    deploy:
+      replicas: 0

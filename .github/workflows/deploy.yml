@@ -1,0 +1,99 @@
+name: Nexcart CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  build:
+    name: Build & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm install
+      - run: cd shared && npx tsc --noEmit
+      - run: cd gateway && npx tsc --noEmit
+      - run: cd services/auth-service && npx tsc --noEmit
+      - run: cd services/order-service && npx tsc --noEmit
+      - run: cd services/payment-service && npx tsc --noEmit
+
+  deploy:
+    name: Deploy to AWS
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        run: echo "IMAGE_TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
+
+      - name: Build and push gateway
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -f gateway/Dockerfile \
+            -t $ECR_REGISTRY/nexcart-gateway:$IMAGE_TAG \
+            -t $ECR_REGISTRY/nexcart-gateway:latest .
+          docker push $ECR_REGISTRY/nexcart-gateway:$IMAGE_TAG
+          docker push $ECR_REGISTRY/nexcart-gateway:latest
+
+      - name: Build and push services
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          for svc in auth-service user-service product-service cart-service order-service payment-service notification-service; do
+            docker build -f services/$svc/Dockerfile \
+              -t $ECR_REGISTRY/nexcart-$svc:$IMAGE_TAG \
+              -t $ECR_REGISTRY/nexcart-$svc:latest .
+            docker push $ECR_REGISTRY/nexcart-$svc:$IMAGE_TAG
+            docker push $ECR_REGISTRY/nexcart-$svc:latest
+          done
+
+      - name: Deploy to EC2 via SSM
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          aws ssm send-command \
+            --targets "Key=tag:Name,Values=nexcart-ec2" \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands='[
+              "cd /app",
+              "export ECR_REGISTRY='$ECR_REGISTRY'",
+              "export IMAGE_TAG='$IMAGE_TAG'",
+              "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '$ECR_REGISTRY'",
+              "docker-compose -f docker-compose.prod.yml pull",
+              "docker-compose -f docker-compose.prod.yml up -d --remove-orphans",
+              "docker image prune -f"
+            ]'
+
+      - name: Run DB migrations
+        run: |
+          aws ssm send-command \
+            --targets "Key=tag:Name,Values=nexcart-ec2" \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands='[
+              "docker exec nexcart-auth npx prisma migrate deploy",
+              "docker exec nexcart-user npx prisma migrate deploy",
+              "docker exec nexcart-order npx prisma migrate deploy",
+              "docker exec nexcart-payment npx prisma migrate deploy"
+            ]'

@@ -1,0 +1,22 @@
+{
+  "name": "nexcart",
+  "version": "1.0.0",
+  "description": "Production Microservices E-Commerce Platform",
+  "private": true,
+  "workspaces": [
+    "gateway",
+    "services/*",
+    "shared",
+    "client"
+  ],
+  "scripts": {
+    "dev": "docker-compose up --build",
+    "dev:infra": "docker-compose up postgres mongo redis rabbitmq",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
