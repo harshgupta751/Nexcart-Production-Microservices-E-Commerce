@@ -2,6 +2,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY shared/ ./shared/
 COPY services/payment-service/package.json ./services/payment-service/
+COPY services/payment-service/tsconfig.json ./services/payment-service/
 COPY services/payment-service/prisma/ ./services/payment-service/prisma/
 COPY services/payment-service/src/ ./services/payment-service/src/
 COPY package.json tsconfig.base.json ./
@@ -15,7 +16,8 @@ ENV NODE_ENV=production
 COPY --from=builder /app/services/payment-service/dist ./dist
 COPY --from=builder /app/services/payment-service/package.json ./
 COPY --from=builder /app/services/payment-service/prisma ./prisma
-RUN npm install --omit=dev && npx prisma generate
+COPY --from=builder /app/shared ./node_modules/@nexcart/shared
+RUN npm install --omit=dev --ignore-scripts && npx prisma generate
 EXPOSE 3006
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
   CMD wget -q -O /dev/null http://localhost:3006/health || exit 1

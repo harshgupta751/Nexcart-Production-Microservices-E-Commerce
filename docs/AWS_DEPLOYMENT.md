@@ -1,4 +1,4 @@
-# ShopFlow AWS Production Deployment Guide
+# Nexcart AWS Production Deployment Guide
 
 ## Architecture Overview
 

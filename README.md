@@ -1,4 +1,4 @@
-# ShopFlow — Production Microservices E-Commerce
+# Nexcart — Production Microservices E-Commerce
 
 A full production-grade microservices e-commerce platform demonstrating every key backend architecture pattern used in real-world systems.
 

@@ -16,7 +16,8 @@ ENV NODE_ENV=production
 COPY --from=builder /app/services/auth-service/dist ./dist
 COPY --from=builder /app/services/auth-service/package.json ./
 COPY --from=builder /app/services/auth-service/prisma ./prisma
-RUN npm install --omit=dev && npx prisma generate
+COPY --from=builder /app/shared ./node_modules/@nexcart/shared
+RUN npm install --omit=dev --ignore-scripts && npx prisma generate
 EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD wget -q -O /dev/null http://localhost:3001/health || exit 1

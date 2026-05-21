@@ -1,8 +1,8 @@
-# ShopFlow — Architecture Documentation
+# Nexcart — Architecture Documentation
 
 ## System Overview
 
-ShopFlow is a production-grade e-commerce platform demonstrating microservices architecture
+Nexcart is a production-grade e-commerce platform demonstrating microservices architecture
 with API Gateway, event-driven communication, caching, circuit breaking, and full AWS deployment.
 
 ---

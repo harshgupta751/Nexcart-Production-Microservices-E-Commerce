@@ -6,15 +6,12 @@
   "workspaces": [
     "gateway",
     "services/*",
-    "shared",
-    "client"
+    "shared"
   ],
   "scripts": {
     "dev": "docker-compose up --build",
     "dev:infra": "docker-compose up postgres mongo redis rabbitmq",
-    "build": "npm run build --workspaces",
-    "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "build": "npm run build --workspaces"
   },
   "devDependencies": {
     "typescript": "^5.3.3"

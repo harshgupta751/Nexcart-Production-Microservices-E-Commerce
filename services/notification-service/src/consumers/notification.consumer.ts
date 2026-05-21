@@ -1,12 +1,18 @@
-import amqp, { Channel, Connection } from 'amqplib';
+import * as amqp from 'amqplib';
 import { createLogger, EventType } from '@nexcart/shared';
-import { sendEmail, orderPlacedTemplate, orderConfirmedTemplate, paymentFailedTemplate, welcomeTemplate } from '../utils/email';
+import {
+  sendEmail,
+  orderPlacedTemplate,
+  orderConfirmedTemplate,
+  paymentFailedTemplate,
+  welcomeTemplate,
+} from '../utils/email';
 
 const logger = createLogger('Notification-Service:Consumer');
 
 class NotificationConsumer {
-  private connection: Connection | null = null;
-  private channel: Channel | null = null;
+  private connection: amqp.ChannelModel | null = null;
+  private channel: amqp.Channel | null = null;
   private url: string;
 
   constructor(url: string) { this.url = url; }
@@ -45,7 +51,8 @@ class NotificationConsumer {
   }
 
   private async reconnect(): Promise<void> {
-    this.connection = null; this.channel = null;
+    this.connection = null;
+    this.channel = null;
     await new Promise((r) => setTimeout(r, 5000));
     await this.connect();
   }
@@ -72,13 +79,20 @@ class NotificationConsumer {
     const { eventType, payload } = event;
     switch (eventType) {
       case EventType.ORDER_PLACED:
-        await sendEmail(orderPlacedTemplate({ orderId: payload.orderId, total: payload.total, itemCount: payload.items?.length || 0, userEmail: payload.userEmail }));
+        await sendEmail(orderPlacedTemplate({
+          orderId: payload.orderId, total: payload.total,
+          itemCount: payload.items?.length || 0, userEmail: payload.userEmail,
+        }));
         break;
       case EventType.PAYMENT_SUCCESS:
-        await sendEmail(orderConfirmedTemplate({ orderId: payload.orderId, total: payload.amount, userEmail: payload.userEmail }));
+        await sendEmail(orderConfirmedTemplate({
+          orderId: payload.orderId, total: payload.amount, userEmail: payload.userEmail,
+        }));
         break;
       case EventType.PAYMENT_FAILED:
-        await sendEmail(paymentFailedTemplate({ orderId: payload.orderId, reason: payload.reason, userEmail: payload.userEmail }));
+        await sendEmail(paymentFailedTemplate({
+          orderId: payload.orderId, reason: payload.reason, userEmail: payload.userEmail,
+        }));
         break;
       case EventType.USER_REGISTERED:
         await sendEmail(welcomeTemplate({ name: payload.name, email: payload.email }));
@@ -88,7 +102,10 @@ class NotificationConsumer {
     }
   }
 
-  async close(): Promise<void> { await this.channel?.close(); await this.connection?.close(); }
+  async close(): Promise<void> {
+    await this.channel?.close();
+    await this.connection?.close();
+  }
 }
 
 export const notificationConsumer = new NotificationConsumer(

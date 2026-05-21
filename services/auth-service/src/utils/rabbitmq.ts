@@ -1,11 +1,11 @@
-import amqp, { Channel, Connection } from 'amqplib';
+import * as amqp from 'amqplib';
 import { createLogger } from '@nexcart/shared';
 
 const logger = createLogger('Auth-Service:RabbitMQ');
 
 class RabbitMQClient {
-  private connection: Connection | null = null;
-  private channel: Channel | null = null;
+  private connection: amqp.ChannelModel | null = null;
+  private channel: amqp.Channel | null = null;
   private url: string;
 
   constructor(url: string) { this.url = url; }
@@ -59,11 +59,17 @@ class RabbitMQClient {
   }
 
   async publish(exchange: string, routingKey: string, message: object): Promise<boolean> {
-    if (!this.channel) { logger.error('Cannot publish: channel not available'); return false; }
+    if (!this.channel) {
+      logger.error('Cannot publish: channel not available');
+      return false;
+    }
     try {
-      return this.channel.publish(exchange, routingKey, Buffer.from(JSON.stringify(message)), {
-        persistent: true, contentType: 'application/json', timestamp: Date.now(),
-      });
+      return this.channel.publish(
+        exchange,
+        routingKey,
+        Buffer.from(JSON.stringify(message)),
+        { persistent: true, contentType: 'application/json', timestamp: Date.now() }
+      );
     } catch (error) {
       logger.error('Failed to publish message', error as Error, { exchange, routingKey });
       return false;
@@ -85,6 +91,7 @@ class RabbitMQClient {
         channel.nack(msg, false, !msg.fields.redelivered);
       }
     });
+
     logger.info(`Consumer registered for queue: ${queue}`);
   }
 

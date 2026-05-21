@@ -77,8 +77,8 @@ services:
 
   gateway:
     build:
-      context: ./gateway
-      dockerfile: Dockerfile
+      context: .                                      # ← ROOT context
+      dockerfile: gateway/Dockerfile                  # ← path to Dockerfile
     container_name: nexcart-gateway
     env_file: ./gateway/.env
     ports:
@@ -96,8 +96,8 @@ services:
 
   auth-service:
     build:
-      context: ./services/auth-service
-      dockerfile: Dockerfile
+      context: .                                      # ← ROOT context
+      dockerfile: services/auth-service/Dockerfile
     container_name: nexcart-auth
     env_file: ./services/auth-service/.env
     ports:
@@ -113,8 +113,8 @@ services:
 
   user-service:
     build:
-      context: ./services/user-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/user-service/Dockerfile
     container_name: nexcart-user
     env_file: ./services/user-service/.env
     ports:
@@ -128,8 +128,8 @@ services:
 
   product-service:
     build:
-      context: ./services/product-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/product-service/Dockerfile
     container_name: nexcart-product
     env_file: ./services/product-service/.env
     ports:
@@ -145,8 +145,8 @@ services:
 
   cart-service:
     build:
-      context: ./services/cart-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/cart-service/Dockerfile
     container_name: nexcart-cart
     env_file: ./services/cart-service/.env
     ports:
@@ -160,8 +160,8 @@ services:
 
   order-service:
     build:
-      context: ./services/order-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/order-service/Dockerfile
     container_name: nexcart-order
     env_file: ./services/order-service/.env
     ports:
@@ -177,8 +177,8 @@ services:
 
   payment-service:
     build:
-      context: ./services/payment-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/payment-service/Dockerfile
     container_name: nexcart-payment
     env_file: ./services/payment-service/.env
     ports:
@@ -194,8 +194,8 @@ services:
 
   notification-service:
     build:
-      context: ./services/notification-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/notification-service/Dockerfile
     container_name: nexcart-notification
     env_file: ./services/notification-service/.env
     ports:
