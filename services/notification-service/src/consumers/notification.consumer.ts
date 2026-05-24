@@ -17,38 +17,47 @@ class NotificationConsumer {
 
   constructor(url: string) { this.url = url; }
 
-  async connect(): Promise<void> {
-    try {
-      this.connection = await amqp.connect(this.url);
-      this.channel = await this.connection.createChannel();
+async connect(): Promise<void> {
+  try {
+    this.connection = await amqp.connect(this.url);
+    this.channel = await this.connection.createChannel();
 
-      await this.channel.assertExchange('notification.exchange', 'topic', { durable: true });
-      await this.channel.assertExchange('payment.exchange', 'topic', { durable: true });
-      await this.channel.assertExchange('order.exchange', 'topic', { durable: true });
-      await this.channel.assertExchange('user.exchange', 'topic', { durable: true });
+    await this.channel.assertExchange('notification.exchange', 'topic', { durable: true });
+    await this.channel.assertExchange('payment.exchange', 'topic', { durable: true });
+    await this.channel.assertExchange('order.exchange', 'topic', { durable: true });
+    await this.channel.assertExchange('user.exchange', 'topic', { durable: true });
 
-      await this.channel.assertQueue('notification.email.queue', {
-        durable: true,
-        arguments: { 'x-dead-letter-exchange': 'dlq.exchange' },
-      });
+    await this.channel.assertQueue('notification.email.queue', { durable: true });
 
-      await this.channel.bindQueue('notification.email.queue', 'notification.exchange', 'notify.*');
-      await this.channel.bindQueue('notification.email.queue', 'payment.exchange', 'payment.*');
-      await this.channel.bindQueue('notification.email.queue', 'order.exchange', 'order.placed');
-      await this.channel.bindQueue('notification.email.queue', 'user.exchange', 'user.registered');
+    await this.channel.bindQueue('notification.email.queue', 'notification.exchange', 'notify.*');
+    await this.channel.bindQueue('notification.email.queue', 'payment.exchange', 'payment.*');
+    await this.channel.bindQueue('notification.email.queue', 'order.exchange', 'order.placed');
+    await this.channel.bindQueue('notification.email.queue', 'user.exchange', 'user.registered');
 
-      await this.channel.prefetch(5);
+    await this.channel.prefetch(5);
 
-      this.connection.on('error', () => this.reconnect());
-      this.connection.on('close', () => this.reconnect());
+    this.connection.on('error', (err) => {
+      logger.error('RabbitMQ error', err);
+      this.scheduleReconnect();
+    });
+    this.connection.on('close', () => {
+      logger.warn('RabbitMQ connection closed');
+      this.scheduleReconnect();
+    });
 
-      await this.startConsuming();
-      logger.info('Notification consumer started');
-    } catch (err) {
-      logger.error('Failed to connect', err as Error);
-      setTimeout(() => this.reconnect(), 5000);
-    }
+    await this.startConsuming();
+    logger.info('Notification consumer started');
+  } catch (err) {
+    logger.error('Failed to connect', err as Error);
+    this.scheduleReconnect();
   }
+}
+
+private scheduleReconnect(): void {
+  this.connection = null;
+  this.channel = null;
+  setTimeout(() => this.connect(), 5000);
+}
 
   private async reconnect(): Promise<void> {
     this.connection = null;

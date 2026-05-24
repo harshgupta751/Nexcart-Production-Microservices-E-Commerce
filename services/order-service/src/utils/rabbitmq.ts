@@ -20,37 +20,39 @@ class RabbitMQClient {
 
       await this.channel.assertQueue('payment.success.queue', { durable: true });
       await this.channel.assertQueue('payment.failed.queue', { durable: true });
-
       await this.channel.bindQueue('payment.success.queue', 'payment.exchange', 'payment.success');
       await this.channel.bindQueue('payment.failed.queue', 'payment.exchange', 'payment.failed');
 
       await this.channel.prefetch(1);
 
-      this.connection.on('error', () => this.reconnect());
-      this.connection.on('close', () => this.reconnect());
+      this.connection.on('error', (err) => {
+        logger.error('RabbitMQ connection error', err);
+        this.scheduleReconnect();
+      });
+      this.connection.on('close', () => {
+        logger.warn('RabbitMQ connection closed');
+        this.scheduleReconnect();
+      });
 
       await this.consumePaymentEvents();
-
       logger.info('RabbitMQ connected');
     } catch (error) {
       logger.error('RabbitMQ connection failed', error as Error);
-      setTimeout(() => this.reconnect(), 5000);
+      this.scheduleReconnect();
     }
   }
 
-  private async reconnect(): Promise<void> {
+  private scheduleReconnect(): void {
     this.connection = null;
     this.channel = null;
-    await new Promise((r) => setTimeout(r, 5000));
-    await this.connect();
+    setTimeout(() => this.connect(), 5000);
   }
 
   async publish(exchange: string, routingKey: string, message: object): Promise<boolean> {
     if (!this.channel) return false;
     try {
       return this.channel.publish(
-        exchange,
-        routingKey,
+        exchange, routingKey,
         Buffer.from(JSON.stringify(message)),
         { persistent: true, contentType: 'application/json' }
       );

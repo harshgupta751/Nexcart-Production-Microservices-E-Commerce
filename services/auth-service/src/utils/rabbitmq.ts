@@ -20,10 +20,8 @@ class RabbitMQClient {
       await this.channel.assertExchange('notification.exchange', 'topic', { durable: true });
       await this.channel.assertExchange('user.exchange', 'topic', { durable: true });
 
-      const queueOptions = {
-        durable: true,
-        arguments: { 'x-dead-letter-exchange': 'dlq.exchange', 'x-message-ttl': 86400000 },
-      };
+      // No x-message-ttl — keep queue declarations simple and consistent
+      const queueOptions = { durable: true };
 
       await this.channel.assertQueue('order.placed.queue', queueOptions);
       await this.channel.assertQueue('payment.process.queue', queueOptions);
@@ -41,32 +39,33 @@ class RabbitMQClient {
 
       await this.channel.prefetch(1);
 
-      this.connection.on('error', () => this.reconnect());
-      this.connection.on('close', () => this.reconnect());
+      this.connection.on('error', (err) => {
+        logger.error('RabbitMQ connection error', err);
+        this.scheduleReconnect();
+      });
+      this.connection.on('close', () => {
+        logger.warn('RabbitMQ connection closed, reconnecting...');
+        this.scheduleReconnect();
+      });
 
       logger.info('RabbitMQ connected and configured');
     } catch (error) {
       logger.error('RabbitMQ connection failed', error as Error);
-      await this.reconnect();
+      this.scheduleReconnect();
     }
   }
 
-  private async reconnect(): Promise<void> {
+  private scheduleReconnect(): void {
     this.connection = null;
     this.channel = null;
-    await new Promise((r) => setTimeout(r, 5000));
-    await this.connect();
+    setTimeout(() => this.connect(), 5000);
   }
 
   async publish(exchange: string, routingKey: string, message: object): Promise<boolean> {
-    if (!this.channel) {
-      logger.error('Cannot publish: channel not available');
-      return false;
-    }
+    if (!this.channel) { logger.error('Cannot publish: channel not available'); return false; }
     try {
       return this.channel.publish(
-        exchange,
-        routingKey,
+        exchange, routingKey,
         Buffer.from(JSON.stringify(message)),
         { persistent: true, contentType: 'application/json', timestamp: Date.now() }
       );
@@ -79,7 +78,6 @@ class RabbitMQClient {
   async consume(queue: string, handler: (message: object) => Promise<void>): Promise<void> {
     if (!this.channel) throw new Error('RabbitMQ channel not available');
     const channel = this.channel;
-
     await channel.consume(queue, async (msg) => {
       if (!msg) return;
       try {
@@ -91,7 +89,6 @@ class RabbitMQClient {
         channel.nack(msg, false, !msg.fields.redelivered);
       }
     });
-
     logger.info(`Consumer registered for queue: ${queue}`);
   }
 

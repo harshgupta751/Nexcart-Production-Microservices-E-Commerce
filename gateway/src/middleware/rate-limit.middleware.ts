@@ -11,12 +11,17 @@ export const rateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: new RedisStore({
-    sendCommand: (...args: string[]) => redisClient.call(...args as [string, ...string[]]),
+    sendCommand: (command: string, ...args: string[]) =>
+      redisClient.call(command, ...args) as Promise<any>,
     prefix: 'rl:general:',
   }),
-  keyGenerator: (req) => req.user?.userId || req.ip || 'unknown',
+  keyGenerator: (req) => (req as any).user?.userId || req.ip || 'unknown',
   handler: (req, res) => {
-    logger.warn('Rate limit exceeded', { ip: req.ip, userId: req.user?.userId, path: req.path });
+    logger.warn('Rate limit exceeded', {
+      ip: req.ip,
+      userId: (req as any).user?.userId,
+      path: req.path,
+    });
     res.status(429).json({
       success: false,
       message: 'Too many requests. Please try again later.',
@@ -31,12 +36,16 @@ export const strictRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: new RedisStore({
-    sendCommand: (...args: string[]) => redisClient.call(...args as [string, ...string[]]),
+    sendCommand: (command: string, ...args: string[]) =>
+      redisClient.call(command, ...args) as Promise<any>,
     prefix: 'rl:auth:',
   }),
   keyGenerator: (req) => req.ip || 'unknown',
   handler: (_req, res) => {
-    res.status(429).json({ success: false, message: 'Too many authentication attempts. Please try again in a minute.' });
+    res.status(429).json({
+      success: false,
+      message: 'Too many authentication attempts. Please try again in a minute.',
+    });
   },
 });
 
@@ -46,11 +55,15 @@ export const paymentRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: new RedisStore({
-    sendCommand: (...args: string[]) => redisClient.call(...args as [string, ...string[]]),
+    sendCommand: (command: string, ...args: string[]) =>
+      redisClient.call(command, ...args) as Promise<any>,
     prefix: 'rl:payment:',
   }),
-  keyGenerator: (req) => req.user?.userId || req.ip || 'unknown',
+  keyGenerator: (req) => (req as any).user?.userId || req.ip || 'unknown',
   handler: (_req, res) => {
-    res.status(429).json({ success: false, message: 'Payment rate limit exceeded. Please wait before trying again.' });
+    res.status(429).json({
+      success: false,
+      message: 'Payment rate limit exceeded. Please wait before trying again.',
+    });
   },
 });
