@@ -19,7 +19,7 @@ COPY --from=builder /app/services/cart-service/package.json ./
 COPY --from=builder /app/shared/dist ./node_modules/@nexcart/shared/dist
 COPY --from=builder /app/shared/package.json ./node_modules/@nexcart/shared/package.json
 RUN npm install --omit=dev --ignore-scripts
-EXPOSE 3004
+EXPOSE 10000
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-  CMD wget -q -O /dev/null http://localhost:3004/health || exit 1
+  CMD wget -q -O /dev/null http://localhost:10000/health || exit 1
 CMD ["node", "dist/index.js"]

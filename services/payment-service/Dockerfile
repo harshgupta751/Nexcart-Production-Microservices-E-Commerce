@@ -23,7 +23,7 @@ COPY --from=builder /app/services/payment-service/prisma ./prisma
 COPY --from=builder /app/shared/dist ./node_modules/@nexcart/shared/dist
 COPY --from=builder /app/shared/package.json ./node_modules/@nexcart/shared/package.json
 RUN npm install --omit=dev --ignore-scripts && npx prisma generate
-EXPOSE 3006
+EXPOSE 10000
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-  CMD wget -q -O /dev/null http://localhost:3006/health || exit 1
+  CMD wget -q -O /dev/null http://localhost:10000/health || exit 1
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
