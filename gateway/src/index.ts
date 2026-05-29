@@ -15,12 +15,53 @@ const logger = createLogger('API-Gateway');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(helmet());
+const allowedOrigins = [
+  'http://localhost:3001',
+  'http://localhost:3000',
+  'https://nexcart-production-microservices-e.vercel.app',        // apna Vercel URL
+  'https://nexcart-*.vercel.app',       // preview deployments
+  process.env.FRONTEND_URL || '',       // env se bhi lo
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:3001'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.some(allowed => {
+      if (allowed.includes('*')) {
+        const pattern = allowed.replace('*', '.*');
+        return new RegExp(pattern).test(origin);
+      }
+      return allowed === origin;
+    })) {
+      callback(null, true);
+    } else {
+      logger.warn('CORS blocked', { origin });
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'x-user-id',
+    'x-user-email',
+    'x-user-role',
+  ],
+  exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Per-Page'],
+  maxAge: 86400, // 24 hours preflight cache
+}));
+
+// Handle preflight
+app.options('*', cors());
+
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 app.use(morgan('combined'));
 app.use(requestLogger);
