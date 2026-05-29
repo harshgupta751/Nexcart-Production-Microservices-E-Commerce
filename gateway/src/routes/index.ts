@@ -7,7 +7,7 @@ const logger = createLogger('API-Gateway:Routes');
 const SERVICE_URLS = {
   AUTH: process.env.AUTH_SERVICE_URL || 'http://auth-service:3001',
   USER: process.env.USER_SERVICE_URL || 'http://user-service:3002',
-  PRODUCT: process.env.PRODUCT_SERVICE_URL || 'http://product-service:3003',
+  PRODUCT: process.env.PRODUCT_SERVICE_URL || 'https://nexcart-product.onrender.com',
   CART: process.env.CART_SERVICE_URL || 'http://cart-service:3004',
   ORDER: process.env.ORDER_SERVICE_URL || 'http://order-service:3005',
   PAYMENT: process.env.PAYMENT_SERVICE_URL || 'http://payment-service:3006',
