@@ -19,7 +19,6 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://localhost:3000',
   'https://nexcart-production-microservices-e.vercel.app',        // apna Vercel URL
-  'https://nexcart-*.vercel.app',       // preview deployments
   process.env.FRONTEND_URL || '',       // env se bhi lo
 ].filter(Boolean);
 
