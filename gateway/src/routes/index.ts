@@ -13,16 +13,20 @@ const SERVICE_URLS = {
   PAYMENT: process.env.PAYMENT_SERVICE_URL || 'http://payment-service:3006',
 };
 
-function createProxy(target: string) {
+function createProxy(target: string, pathPrefix: string) {
   return createProxyMiddleware({
     target,
     changeOrigin: true,
+    pathRewrite: (path) => {
+      // path prefix wapas add karo jo express ne strip kar di
+      return `${pathPrefix}${path}`;
+    },
     on: {
       error: (err, req, res: any) => {
         logger.error(`Proxy error to ${target}`, err as Error);
-        res.status(503).json({ 
-          success: false, 
-          message: 'Service temporarily unavailable' 
+        res.status(503).json({
+          success: false,
+          message: 'Service temporarily unavailable',
         });
       },
       proxyReq: (proxyReq, req: any) => {
@@ -34,8 +38,11 @@ function createProxy(target: string) {
         proxyReq.setHeader('X-Request-ID', req.requestId || '');
         proxyReq.setHeader('X-Forwarded-By', 'nexcart-gateway');
 
-        // Body fix for POST/PUT/PATCH
-        if (['POST', 'PUT', 'PATCH'].includes(req.method) && req.body) {
+        if (
+          ['POST', 'PUT', 'PATCH'].includes(req.method) &&
+          req.body &&
+          Object.keys(req.body).length > 0
+        ) {
           const bodyData = JSON.stringify(req.body);
           proxyReq.setHeader('Content-Type', 'application/json');
           proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
@@ -47,32 +54,60 @@ function createProxy(target: string) {
 }
 
 export function setupProxyRoutes(
-  app: Application, 
+  app: Application,
   authMiddleware: RequestHandler
 ): void {
-  // Auth — no auth required
-  app.use('/api/auth', createProxy(SERVICE_URLS.AUTH));
+  // Auth
+  app.use(
+    '/api/auth',
+    createProxy(SERVICE_URLS.AUTH, '/api/auth')
+  );
 
-  // User — auth required
-  app.use('/api/users', authMiddleware, createProxy(SERVICE_URLS.USER));
+  // User
+  app.use(
+    '/api/users',
+    authMiddleware,
+    createProxy(SERVICE_URLS.USER, '/api/users')
+  );
 
-  // Products — GET public, rest needs auth
+  // Products — GET public
   app.use('/api/products', (req, res, next) => {
     if (req.method === 'GET') return next();
     return authMiddleware(req, res, next);
-  }, createProxy(SERVICE_URLS.PRODUCT));
+  });
+  app.use(
+    '/api/products',
+    createProxy(SERVICE_URLS.PRODUCT, '/api/products')
+  );
 
-  // Cart — auth required
-  app.use('/api/cart', authMiddleware, createProxy(SERVICE_URLS.CART));
+  // Cart
+  app.use(
+    '/api/cart',
+    authMiddleware,
+    createProxy(SERVICE_URLS.CART, '/api/cart')
+  );
 
-  // Orders — auth required
-  app.use('/api/orders', authMiddleware, createProxy(SERVICE_URLS.ORDER));
+  // Orders
+  app.use(
+    '/api/orders',
+    authMiddleware,
+    createProxy(SERVICE_URLS.ORDER, '/api/orders')
+  );
 
-  // Payments — webhook public, rest needs auth
-  app.use('/api/payments/webhook', createProxy(SERVICE_URLS.PAYMENT));
-  app.use('/api/payments', authMiddleware, createProxy(SERVICE_URLS.PAYMENT));
+  // Payments webhook — no auth
+  app.use(
+    '/api/payments/webhook',
+    createProxy(SERVICE_URLS.PAYMENT, '/api/payments')
+  );
 
-  logger.info('Proxy routes configured', { 
-    services: Object.keys(SERVICE_URLS) 
+  // Payments — auth required
+  app.use(
+    '/api/payments',
+    authMiddleware,
+    createProxy(SERVICE_URLS.PAYMENT, '/api/payments')
+  );
+
+  logger.info('Proxy routes configured', {
+    services: Object.keys(SERVICE_URLS),
   });
 }
